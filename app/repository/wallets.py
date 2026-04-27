@@ -1,24 +1,41 @@
 from decimal import Decimal
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
-from app.database import SessionLocal
 from app.enum import CurrencyEnum
-from app.models import Wallet, User
+from app.models import Wallet
 
 
-def get_wallet_by_name(db: Session, user_id: int, wallet_name: str) -> Wallet:
-    return db.query(Wallet).filter(Wallet.name == wallet_name, Wallet.user_id == user_id).first()
+async def get_wallet_by_name(db: AsyncSession, user_id: int, wallet_name: str) -> Wallet:
+    result = await db.execute(
+        select(Wallet).where(
+            Wallet.name == wallet_name,
+            Wallet.user_id == user_id
+        )
+    )
+    return result.scalars().first()
 
-def get_all_wallets(db: Session, user_id: int) -> list[Wallet]:
-    return db.query(Wallet).filter(Wallet.user_id == user_id).all()
+async def get_all_wallets(db: AsyncSession, user_id: int) -> list[Wallet]:
+    result = await db.execute(
+        select(Wallet).where(
+            Wallet.user_id == user_id
+        )
+    )
+    return result.scalars().all()
 
 
-def create_wallet(db: Session, user_id: int, wallet_name: str, amount: Decimal, currency: CurrencyEnum) -> Wallet:
+async def create_wallet(db: AsyncSession, user_id: int, wallet_name: str, amount: Decimal, currency: CurrencyEnum) -> Wallet:
     wallet = Wallet(name=wallet_name, balance=amount, user_id=user_id, currency=currency)
     db.add(wallet)
-    db.flush() # Применение изменений к базе данных без сохранения транзакции
+    await db.flush() # Применение изменений к базе данных без сохранения транзакции
     return wallet
 
-def get_wallet_by_id(db: Session, user_id: int, wallet_id: int) -> Wallet | None:
-    return db.query(Wallet).filter(Wallet.id == wallet_id, Wallet.user_id == user_id).scalar()
+async def get_wallet_by_id(db: AsyncSession, user_id: int, wallet_id: int) -> Wallet | None:
+    result = await db.execute(
+        select(Wallet).where(
+            Wallet.user_id == user_id,
+            Wallet.id == wallet_id
+        )
+    )
+    return result.scalars().first()
